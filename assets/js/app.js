@@ -971,7 +971,7 @@
     updateDroThird(null);
     updateColorModeUI();
 
-    $('appVersion').textContent = 'v1.0.0';
+    $('appVersion').textContent = 'v1.1.0';
     registerSW();
   }
 

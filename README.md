@@ -1,10 +1,12 @@
+<p align="center"><img src="assets/icons/icon-192.png" alt="GT-Graphic" width="128"></p>
+
 # GT-Graphic
 
 **Visualizzatore 2D e analizzatore geometrico di programmi G-Code ISO/Fanuc** per desktop e iPhone. Web app statica, senza dipendenze runtime, con proiezione ortogonale tecnica su tre piani, interrogazione dei punti con snap, gestione dell'origine pezzo e funzionamento offline come PWA.
 
 - **Demo online:** <https://lucata76-beep.github.io/GT-Graphic/>
 - **Repository:** <https://github.com/lucata76-beep/GT-Graphic>
-- **Versione:** 1.0.0
+- **Versione:** 1.1.0
 
 ![Vista X-Y su desktop](docs/desktop-xy.png)
 
@@ -181,7 +183,7 @@ Il workflow `.github/workflows/deploy.yml` è incluso e pubblica la radice del r
 
 ```bash
 git add -A
-git commit -m "GT-Graphic 1.0.0"
+git commit -m "GT-Graphic 1.1.0"
 git push origin main
 ```
 

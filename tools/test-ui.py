@@ -51,6 +51,12 @@ def desktop(p):
     page.goto(URL, wait_until="networkidle")
     wait_ready(page)
 
+    logo_ok = page.evaluate(
+        "() => { const i = document.querySelector('.brand-mark img'); return !!i && i.complete && i.naturalWidth > 0; }"
+    )
+    check(logo_ok, "Logo appbar caricato")
+    check("apple-touch-icon.png" in (page.locator('link[rel="apple-touch-icon"]').get_attribute("href") or ""),
+          "Apple touch icon configurata")
     check(page.locator("#emptyState").is_visible(), "Empty state visibile all'avvio")
     check(page.locator("#canvas").bounding_box()["height"] > 400, "Canvas dimensionato")
     page.screenshot(path=os.path.join(SHOTS, "desktop-empty.png"))

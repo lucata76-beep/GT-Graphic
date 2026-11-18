@@ -4,7 +4,7 @@
  */
 'use strict';
 
-var CACHE = 'gt-graphic-v1.0.1';
+var CACHE = 'gt-graphic-v1.1.0';
 
 var ASSETS = [
   './',
@@ -15,7 +15,10 @@ var ASSETS = [
   './assets/js/viewer.js',
   './assets/js/demo.js',
   './assets/js/app.js',
-  './assets/icons/favicon.svg',
+  './assets/icons/favicon.ico',
+  './assets/icons/favicon-32.png',
+  './assets/icons/favicon-16.png',
+  './assets/icons/logo-mark.png',
   './assets/icons/icon-192.png',
   './assets/icons/icon-512.png',
   './assets/icons/icon-maskable-512.png',
