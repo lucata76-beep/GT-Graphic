@@ -177,7 +177,7 @@ Stato attuale: **tutti i test parser e UI superati**, nessun errore console, car
 
 ## Deploy
 
-Il workflow `.github/workflows/deploy.yml` pubblica la radice del repository su GitHub Pages a ogni push su `main`. In **Settings → Pages → Build and deployment** il source deve essere **GitHub Actions**.
+Il workflow `.github/workflows/deploy.yml` è incluso e pubblica la radice del repository su GitHub Pages a ogni push su `main`. La configurazione attuale del repository usa la pubblicazione automatica dal branch `main` (Pages legacy): ogni push aggiorna già il sito senza intervento. Per passare al deploy tramite GitHub Actions, aprire **Settings → Pages → Build and deployment** e impostare Source su **GitHub Actions**; il workflow è già presente, testato e verde.
 
 ```bash
 git add -A
