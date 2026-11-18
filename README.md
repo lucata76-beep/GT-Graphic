@@ -115,6 +115,8 @@ L'origine attiva è uno shift locale `(X, Y, Z)` applicato a griglia, DRO, coord
 - **Manuale:** inserisci X/Y/Z e premi **Applica origine**. I pulsanti `±` accanto ai campi permettono di cambiare segno senza dover digitare il meno, comodo sulla tastiera numerica di iOS.
 - **Ripristina:** riporta l'origine a `(0,0,0)`.
 
+![Pannello origine su iPhone](docs/mobile-origin.png)
+
 ---
 
 ## Programmi di esempio
@@ -127,7 +129,9 @@ L'origine attiva è uno shift locale `(X, Y, Z)` applicato a griglia, DRO, coord
 
 Il pulsante **Carica programma demo** usa una copia incorporata generata da `samples/DEMO_PART.nc` tramite `node tools/build-demo.js`: la demo funziona anche offline e da `file://`.
 
-![Inspector con blocco G-Code](docs/desktop-inspect.png)
+| Inspector desktop | Inspector iPhone |
+|---|---|
+| ![Inspector con blocco G-Code](docs/desktop-inspect.png) | ![Inspector su iPhone](docs/mobile-inspect.png) |
 
 ---
 

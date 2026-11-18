@@ -585,8 +585,16 @@
   }
 
   function onHover(h) {
-    if (h) updateDroThird(h);
-    else updateDroThird(GTViewer.getSelection());
+    if (h) {
+      updateDroThird(h);
+      renderInspector(h);
+      updateChip(h);
+      return;
+    }
+    var sel = GTViewer.getSelection();
+    updateDroThird(sel);
+    renderInspector(sel);
+    updateChip(sel);
   }
 
   /* ------------------------------------------------------------------ */
