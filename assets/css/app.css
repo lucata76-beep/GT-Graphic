@@ -921,6 +921,17 @@ button {
   text-overflow: ellipsis;
 }
 
+.file-tag {
+  margin-top: 3px;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: .04em;
+  color: #ffb27a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .file-warn {
   margin-top: 4px;
   font-size: 9.5px;

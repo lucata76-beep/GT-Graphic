@@ -79,6 +79,109 @@ check(comments.segments[0].line === 5, 'Commenti: numero riga conservato', comme
 const inc = P.parse(['G21 G90', 'G00 X10 Y10', 'G91', 'G01 X5 Y-3', 'G90 G01 X0 Y0'].join('\n'));
 check(Math.abs(inc.segments[1].x1 - 15) < 1e-9 && Math.abs(inc.segments[1].y1 - 7) < 1e-9, 'G91: quote incrementali', inc.segments[1].x1 + ',' + inc.segments[1].y1);
 
+// ------------------------------------------------------------------
+// Custom Macro B
+// ------------------------------------------------------------------
+const sformo = analyze('SFORMO_VAR');
+check(sformo.stats.segments > 550 && sformo.stats.segments < 700, 'SFORMO: ciclo macro espanso (~604 segmenti)', sformo.stats.segments);
+check(sformo.stats.byType[3] >= 60, 'SFORMO: 60 archi G03, uno per passata', sformo.stats.byType[3]);
+check(Math.abs(sformo.bounds.minZ + 3) < 1e-6, 'SFORMO: profondita Z -3', sformo.bounds.minZ);
+check(Math.abs(sformo.bounds.maxZ - 200) < 1e-6, 'SFORMO: Z massimo 200', sformo.bounds.maxZ);
+check(Math.abs(sformo.finalPosition.z - 100) < 1e-6, 'SFORMO: G53 non sposta la posizione finale (Z100)', sformo.finalPosition.z);
+check(Math.abs(sformo.macros.variables[800] + 3) < 1e-6, 'SFORMO: #800 = -3 dopo il ciclo', sformo.macros.variables[800]);
+check(Math.abs(sformo.macros.variables[801] + 3) < 1e-6, 'SFORMO: #801 = -3', sformo.macros.variables[801]);
+check(sformo.macros.variables[777] === 0, 'SFORMO: #777 azzerato a fine programma', sformo.macros.variables[777]);
+check(sformo.macros.labels === 4, 'SFORMO: 4 etichette N', sformo.macros.labels);
+check(sformo.segments.filter(s => s.n === 'N100').length >= 600, 'SFORMO: segmenti del loop marcati N100');
+check(sformo.segments.some(s => s.block.indexOf('G41G1D#777') >= 0), 'SFORMO: blocco originale conservato');
+check(!sformo.warnings.some(w => /Errore di parsing|Macro:/.test(w.message)), 'SFORMO: nessun errore macro');
+
+const macroExpr = P.parse([
+  'G21 G90',
+  '#1=ABS[-5]',
+  '#2=ROUND[1.5]',
+  '#3=[90-30]/2',
+  '#4=TAN[45]',
+  '#5=SQRT[16]',
+  'G0 X#1 Y#2',
+  'G1 X#3 Y#4',
+  'G1 X#5'
+].join('\n'));
+check(macroExpr.stats.segments === 3, 'MACRO: tre segmenti con variabili', macroExpr.stats.segments);
+check(Math.abs(macroExpr.segments[0].x1 - 5) < 1e-9 && Math.abs(macroExpr.segments[0].y1 - 2) < 1e-9,
+  'MACRO: ABS[-5]=5 e ROUND[1.5]=2', macroExpr.segments[0].x1 + ',' + macroExpr.segments[0].y1);
+check(Math.abs(macroExpr.segments[1].x1 - 30) < 1e-9 && Math.abs(macroExpr.segments[1].y1 - 1) < 1e-9,
+  'MACRO: [90-30]/2=30 e TAN[45]=1', macroExpr.segments[1].x1 + ',' + macroExpr.segments[1].y1);
+check(Math.abs(macroExpr.segments[2].x1 - 4) < 1e-9, 'MACRO: SQRT[16]=4', macroExpr.segments[2].x1);
+
+const ifTrue = P.parse([
+  'G21 G90',
+  '#1=3',
+  'IF[#1EQ3]GOTO20',
+  'G1 X99',
+  'N20',
+  'G1 X10'
+].join('\n'));
+check(ifTrue.stats.segments === 1 && Math.abs(ifTrue.segments[0].x1 - 10) < 1e-9,
+  'MACRO: IF vero salta al blocco N20', ifTrue.stats.segments);
+
+const ifFalse = P.parse([
+  'G21 G90',
+  '#1=2',
+  'IF[#1EQ3]GOTO20',
+  'G1 X10',
+  'GOTO30',
+  'N20',
+  'G1 X99',
+  'N30',
+  'G1 X20'
+].join('\n'));
+check(ifFalse.stats.segments === 2 &&
+  Math.abs(ifFalse.segments[0].x1 - 10) < 1e-9 &&
+  Math.abs(ifFalse.segments[1].x1 - 20) < 1e-9,
+  'MACRO: IF falso prosegue e GOTO salta N20', ifFalse.stats.segments);
+
+const gotoTest = P.parse([
+  'G21 G90',
+  'GOTO20',
+  'G1 X99',
+  'N20',
+  'G1 X10'
+].join('\n'));
+check(gotoTest.stats.segments === 1 && Math.abs(gotoTest.segments[0].x1 - 10) < 1e-9,
+  'MACRO: GOTO incondizionato', gotoTest.stats.segments);
+
+const loopTest = P.parse([
+  'G21 G90',
+  '#1=0',
+  'N10',
+  '#1=#1+0.05',
+  'G1 X#1',
+  'IF[#1EQ1.0]GOTO20',
+  'GOTO10',
+  'N20'
+].join('\n'));
+check(loopTest.stats.segments === 20, 'MACRO: 20 passate con EQ su float', loopTest.stats.segments);
+check(Math.abs(loopTest.segments[19].x1 - 1) < 1e-9, 'MACRO: X finale 1.0', loopTest.segments[19].x1);
+
+const toolTest = P.parse([
+  'G21 G90',
+  '#777=3',
+  'T#777M6',
+  'G43H#777Z200',
+  'G41G1D#777X10Y0'
+].join('\n'));
+check(toolTest.stats.segments === 2, 'MACRO: T/H/D con variabili', toolTest.stats.segments);
+check(toolTest.warnings.some(w => /G41/.test(w.message)), 'MACRO: avviso compensazione G41');
+
+const missing = P.parse(['G21 G90', 'GOTO99', 'G1 X10'].join('\n'));
+check(missing.stats.segments === 0, 'MACRO: GOTO inesistente non traccia', missing.stats.segments);
+check(missing.warnings.some(w => /inesistente/.test(w.message)), 'MACRO: avviso GOTO inesistente');
+
+const loopLimit = P.parse(['N10', 'GOTO10'].join('\n'), { maxMacroSteps: 100 });
+check(loopLimit.macros.limitReached === true, 'MACRO: limite passi attivato');
+check(loopLimit.warnings.some(w => /Limite/.test(w.message)), 'MACRO: avviso limite passi');
+
 console.log('\n=========================================');
 if (failures) {
   console.log('TEST FALLITI: ' + failures);

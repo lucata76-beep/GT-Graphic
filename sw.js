@@ -4,7 +4,7 @@
  */
 'use strict';
 
-var CACHE = 'gt-graphic-v1.1.0';
+var CACHE = 'gt-graphic-v1.2.0';
 
 var ASSETS = [
   './',
@@ -25,7 +25,8 @@ var ASSETS = [
   './assets/icons/apple-touch-icon.png',
   './samples/DEMO_PART.nc',
   './samples/SG1-1',
-  './samples/FT1-2'
+  './samples/FT1-2',
+  './samples/SFORMO_VAR'
 ];
 
 self.addEventListener('install', function (event) {

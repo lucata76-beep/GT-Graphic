@@ -339,10 +339,35 @@ def file_protocol(p):
     browser.close()
 
 
+def macro_b(p):
+    print("\n=== MACRO B / SFORMO_VAR ===")
+    browser = p.chromium.launch(executable_path="/usr/bin/chromium", args=["--no-sandbox"])
+    page = browser.new_page(viewport={"width": 1440, "height": 900})
+    attach(page, "macro")
+    page.goto(URL, wait_until="networkidle")
+    wait_ready(page)
+    with page.expect_file_chooser() as fc:
+        page.click("#btnOpen")
+    fc.value.set_files(os.path.join(ROOT, "samples", "SFORMO_VAR"))
+    page.wait_for_selector(".file-row")
+    page.wait_for_timeout(800)
+    segs = int(page.locator("#stSegs").inner_text().split()[0])
+    check(segs >= 550, "SFORMO_VAR: ciclo macro espanso", segs)
+    check(page.locator(".file-name").first.inner_text() == "SFORMO_VAR",
+          "SFORMO_VAR: nome file senza estensione")
+    check(page.locator(".file-tag").count() == 1, "SFORMO_VAR: badge Macro B")
+    check("MACRO B" in page.locator(".file-tag").first.inner_text(),
+          "SFORMO_VAR: etichetta Macro B", page.locator(".file-tag").first.inner_text())
+    page.screenshot(path=os.path.join(SHOTS, "desktop-macro.png"))
+    check(not console_errors, "Nessun errore console macro", console_errors[:5])
+    browser.close()
+
+
 with sync_playwright() as p:
     desktop(p)
     mobile(p)
     file_protocol(p)
+    macro_b(p)
 
 print("\n=========================================")
 if console_errors:

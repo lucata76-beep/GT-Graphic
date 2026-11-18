@@ -411,6 +411,15 @@
           '</summary><ul class="warn-list">' + items + '</ul></details>';
       }
 
+      var macroHtml = '';
+      if (p.macros && p.macros.variables) {
+        var macroVars = Object.keys(p.macros.variables).length;
+        if (macroVars) {
+          macroHtml = '<div class="file-tag" title="Custom Macro B interpretato">MACRO B \u00b7 ' +
+            macroVars + ' var \u00b7 ' + p.macros.jumps + ' salti</div>';
+        }
+      }
+
       row.innerHTML =
         '<button type="button" class="file-eye" aria-label="Mostra o nascondi" title="Mostra/nascondi">' +
           icon(f.visible ? 'i-eye' : 'i-eye-off') +
@@ -420,6 +429,7 @@
           '<div class="file-name"></div>' +
           '<div class="file-sub">' + p.stats.segments + ' seg \u00b7 ' + fmtLen(p.stats.total) +
             ' \u00b7 ' + (p.stats.byType[2] + p.stats.byType[3]) + ' archi</div>' +
+          macroHtml +
           warnHtml +
         '</div>' +
         '<button type="button" class="file-del" aria-label="Rimuovi file" title="Rimuovi">' +
@@ -971,7 +981,7 @@
     updateDroThird(null);
     updateColorModeUI();
 
-    $('appVersion').textContent = 'v1.1.0';
+    $('appVersion').textContent = 'v1.2.0';
     registerSW();
   }
 
