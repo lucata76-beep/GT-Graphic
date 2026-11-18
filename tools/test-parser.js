@@ -95,6 +95,19 @@ check(sformo.macros.labels === 4, 'SFORMO: 4 etichette N', sformo.macros.labels)
 check(sformo.segments.filter(s => s.n === 'N100').length >= 600, 'SFORMO: segmenti del loop marcati N100');
 check(sformo.segments.some(s => s.block.indexOf('G41G1D#777') >= 0), 'SFORMO: blocco originale conservato');
 check(!sformo.warnings.some(w => /Errore di parsing|Macro:/.test(w.message)), 'SFORMO: nessun errore macro');
+check(sformo.steps.length > 800, 'SFORMO: timeline di esecuzione completa', sformo.steps.length);
+const lastStep = sformo.steps[sformo.steps.length - 1];
+check(lastStep.kind === 'stop', 'SFORMO: ultimo passo M30', lastStep.kind);
+check(lastStep.g.indexOf('G54') >= 0 && lastStep.g.indexOf('G90') >= 0, 'SFORMO: G modali finali G54/G90', lastStep.g.join(' '));
+check(lastStep.g.indexOf('G94') >= 0, 'SFORMO: modalita avanzamento G94', lastStep.g.join(' '));
+check(lastStep.f === 3000 && lastStep.s === 5000 && lastStep.t === 3, 'SFORMO: F/S/T finali 3000/5000/T3');
+check(sformo.steps.some(s => s.kind === 'if' && s.jump === 110), 'SFORMO: salto IF verso N110 registrato');
+check(sformo.steps.some(s => s.kind === 'goto' && s.jump === 10), 'SFORMO: GOTO verso N10 registrato');
+check(sformo.steps.some(s => s.kind === 'motion' && s.segIndex !== null), 'SFORMO: passo con segmento associato');
+const var800 = sformo.macros.variableInfo[800];
+const var778 = sformo.macros.variableInfo[778];
+check(var800 && var800.kind === 'cycle' && var800.values.length === 61, 'SFORMO: #800 a ciclo con 61 valori', var800 && var800.values.length);
+check(var778 && var778.kind === 'fixed' && var778.current === 30, 'SFORMO: #778 fissa a 30', var778 && var778.current);
 
 const macroExpr = P.parse([
   'G21 G90',

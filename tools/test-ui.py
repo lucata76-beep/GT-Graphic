@@ -309,11 +309,16 @@ def mobile(p):
           page.locator("#chipCoords").inner_text())
     page.screenshot(path=os.path.join(SHOTS, "mobile-inspect.png"))
 
-    # Pannello a scomparsa
-    page.tap("#btnPanel")
+    # Pannello a scomparsa: su mobile il pulsante e' Stato
+    page.tap("#btnPan")
+    page.wait_for_timeout(150)
+    page.tap("#btnState")
     page.wait_for_timeout(400)
     panel = page.locator("#sidePanel").bounding_box()
     check(panel and panel["y"] < 844, "Mobile: pannello aperto", panel)
+    check(page.locator("#page-state").is_visible(), "Mobile: tab Stato aperto")
+    check("DEMO_PART.nc" in page.locator("#stateFile").inner_text(), "Mobile: file attivo nel pannello Stato")
+    page.evaluate("() => { const t = document.getElementById('toast'); t.classList.remove('show'); t.style.display = 'none'; }")
     page.screenshot(path=os.path.join(SHOTS, "mobile-panel.png"))
     page.tap('.tab[data-tab="origin"]')
     page.wait_for_timeout(200)
@@ -362,6 +367,50 @@ def macro_b(p):
     check("MACRO B" in page.locator(".file-tag").first.inner_text(),
           "SFORMO_VAR: etichetta Macro B", page.locator(".file-tag").first.inner_text())
     page.screenshot(path=os.path.join(SHOTS, "desktop-macro.png"))
+
+    # Pannello Stato / variabili / blocco singolo
+    page.click("#btnState")
+    page.wait_for_timeout(300)
+    check(page.locator("#page-state").is_visible(), "Stato: pannello visibile")
+    check("SFORMO_VAR" in page.locator("#stateFile").inner_text(), "Stato: file attivo",
+          page.locator("#stateFile").inner_text())
+    g_txt = page.locator("#stateG").inner_text()
+    check("G90" in g_txt and "G54" in g_txt, "Stato: G modali G90/G54", g_txt.replace("\n", " "))
+    check(page.locator("#stateF").inner_text().startswith("3000"), "Stato: F finale 3000",
+          page.locator("#stateF").inner_text())
+    check(page.locator("#stateS").inner_text().startswith("5000"), "Stato: S 5000",
+          page.locator("#stateS").inner_text())
+    check(page.locator("#stateT").inner_text() == "T3", "Stato: T3",
+          page.locator("#stateT").inner_text())
+    check("#778" in page.locator("#varFixed").inner_text(), "Stato: variabile fissa #778")
+    check("#800" in page.locator("#varCycle").inner_text(), "Stato: variabile a ciclo #800")
+
+    page.click("#btnCycleStart")
+    page.wait_for_timeout(200)
+    check(page.locator("#stateNote").inner_text().startswith("Blocco 1 di"), "Blocco singolo: primo blocco",
+          page.locator("#stateNote").inner_text())
+    for _ in range(31):
+        page.click("#btnCycleStart")
+    page.wait_for_timeout(300)
+    prog = page.evaluate("GTViewer.getProgress()")
+    check(prog and prog["count"] > 0 and prog["currentSegIndex"] is not None,
+          "Blocco singolo: percorso eseguito", prog)
+    check("G3" in page.locator("#stateG").inner_text(), "Blocco singolo: G3 attivo")
+    page.screenshot(path=os.path.join(SHOTS, "desktop-state.png"))
+
+    page.click("#btnSimReset")
+    page.wait_for_timeout(200)
+    check(page.evaluate("GTViewer.getProgress()") is None, "Reset esecuzione: anteprima completa")
+    page.click("#btnSingle")
+    page.click("#btnCycleStart")
+    page.wait_for_timeout(600)
+    check(page.locator("#stateBadge").inner_text() == "RUN", "Esecuzione continua: RUN")
+    page.click("#btnCycleStop")
+    page.wait_for_timeout(200)
+    check(page.locator("#stateBadge").inner_text() == "STEP", "Cycle Stop: fermo su STEP")
+    check(page.locator("#btnCycleStop").is_disabled(), "Cycle Stop disabilitato da fermo")
+    page.click("#btnSimReset")
+    page.click("#btnSingle")
     check(not console_errors, "Nessun errore console macro", console_errors[:5])
     browser.close()
 

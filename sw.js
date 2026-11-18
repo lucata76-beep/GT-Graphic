@@ -4,7 +4,7 @@
  */
 'use strict';
 
-var CACHE = 'gt-graphic-v1.2.1';
+var CACHE = 'gt-graphic-v1.3.0';
 
 var ASSETS = [
   './',

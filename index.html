@@ -44,6 +44,10 @@
     <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H6.5A1.5 1.5 0 0 0 5 4.5v15A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5V8l-5-5z"/><path d="M14 3v5h5"/></symbol>
     <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
     <symbol id="i-reset" viewBox="0 0 24 24"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"/><path d="M3.5 4.5V10H9"/></symbol>
+    <symbol id="i-state" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="9" cy="18" r="2"/></symbol>
+    <symbol id="i-step" viewBox="0 0 24 24"><path d="M5 5l9 7-9 7V5z"/><path d="M18 5v14"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 5l12 7-12 7V5z"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1"/></symbol>
   </defs>
 </svg>
 
@@ -59,7 +63,7 @@
         <h1>GT-Graphic</h1>
         <p>G-CODE 2D BACKPLOTTER</p>
       </div>
-      <span class="brand-ver js-version" id="brandVersion">v1.2.1</span>
+      <span class="brand-ver js-version" id="brandVersion">v1.3.0</span>
     </div>
 
     <div class="filebar" role="group" aria-label="Menu File">
@@ -133,6 +137,9 @@
 
     <div class="toolbar-spacer"></div>
 
+    <button type="button" id="btnState" class="tbtn" title="Stato G/M/N/F/S e variabili Macro B">
+      <svg class="ico"><use href="#i-state"/></svg><span class="btn-label">Stato</span>
+    </button>
     <button type="button" id="btnPanel" class="tbtn" title="Mostra/nascondi pannello">
       <svg class="ico"><use href="#i-panel"/></svg><span class="btn-label">Pannello</span>
     </button>
@@ -204,6 +211,7 @@
           <button type="button" class="tab active" data-tab="files" role="tab" aria-selected="true">File</button>
           <button type="button" class="tab" data-tab="inspect" role="tab" aria-selected="false">Info</button>
           <button type="button" class="tab" data-tab="origin" role="tab" aria-selected="false">Origine</button>
+          <button type="button" class="tab" data-tab="state" role="tab" aria-selected="false">Stato</button>
           <button type="button" class="tab" data-tab="help" role="tab" aria-selected="false">Aiuto</button>
         </div>
         <button type="button" id="btnPanelClose" class="icon-btn panel-close" aria-label="Chiudi pannello">
@@ -289,6 +297,58 @@
           <p class="fine">La nuova origine <b>(0,0,0)</b> coincide con le quote inserite (shift G54 locale). Griglia, DRO e interrogazione si ricalcolano istantaneamente. Il comando <b>da punto grafico</b> usa lo snap su vertici e centri arco.</p>
         </section>
 
+        <!-- STATO -->
+        <section class="panel-page" id="page-state" role="tabpanel" aria-label="Stato esecuzione e variabili Macro B">
+          <div class="state-head">
+            <div class="state-head-main">
+              <span class="section-title">Esecuzione</span>
+              <div class="state-file" id="stateFile">Nessun programma</div>
+            </div>
+            <span class="state-badge" id="stateBadge">PRONTO</span>
+          </div>
+
+          <div class="state-controls">
+            <button type="button" id="btnSingle" class="btn btn-block" aria-pressed="true" title="Esegue un blocco G-code per volta">
+              <svg class="ico"><use href="#i-step"/></svg>Blocco singolo
+            </button>
+            <div class="state-run-row">
+              <button type="button" id="btnCycleStart" class="btn btn-run" title="Esegue un blocco oppure avvia l'esecuzione continua">
+                <svg class="ico"><use href="#i-play"/></svg>Cycle Start
+              </button>
+              <button type="button" id="btnCycleStop" class="btn btn-stop" title="Ferma l'esecuzione continua">
+                <svg class="ico"><use href="#i-stop"/></svg>Cycle Stop
+              </button>
+            </div>
+            <button type="button" id="btnSimReset" class="btn btn-block" title="Ripristina l'anteprima completa">
+              <svg class="ico"><use href="#i-reset"/></svg>Reset esecuzione
+            </button>
+          </div>
+
+          <div class="state-note" id="stateNote">Anteprima valori finali. Premi Cycle Start per eseguire il primo blocco.</div>
+
+          <div class="state-grid">
+            <div class="state-row"><span class="state-k">G</span><div class="state-chips" id="stateG">&mdash;</div></div>
+            <div class="state-row"><span class="state-k" title="Ultimi codici M eseguiti">M</span><div class="state-chips" id="stateM">&mdash;</div></div>
+            <div class="state-row"><span class="state-k">N</span><div class="state-v" id="stateN">&mdash;</div></div>
+            <div class="state-row"><span class="state-k">F</span><div class="state-v" id="stateF">&mdash;</div></div>
+            <div class="state-row"><span class="state-k">S</span><div class="state-v" id="stateS">&mdash;</div></div>
+            <div class="state-row"><span class="state-k">T</span><div class="state-v" id="stateT">&mdash;</div></div>
+          </div>
+
+          <div class="state-pos" id="statePos">X &mdash; &middot; Y &mdash; &middot; Z &mdash;</div>
+          <div class="state-block" id="stateBlock">Nessun blocco</div>
+
+          <div class="var-head">
+            <span class="section-title">Variabili Macro B</span>
+            <span class="var-count" id="varCount">0</span>
+          </div>
+          <div class="var-subhead"><span>Valori variabili</span><b id="varCycleCount">0</b></div>
+          <div class="var-group" id="varCycle"></div>
+          <div class="var-subhead"><span>Valori fissi</span><b id="varFixedCount">0</b></div>
+          <div class="var-group" id="varFixed"></div>
+          <p class="fine">Le variabili <b>fisse</b> mantengono lo stesso valore; quelle <b>variabili</b> cambiano a ogni passata. Il valore mostrato è quello del blocco corrente; senza esecuzione è l'anteprima finale.</p>
+        </section>
+
         <!-- AIUTO -->
         <section class="panel-page" id="page-help" role="tabpanel" aria-label="Aiuto">
           <span class="section-title">Caricare i file</span>
@@ -308,6 +368,14 @@
             <div><kbd>&larr;</kbd><kbd>&rarr;</kbd><kbd>&uarr;</kbd><kbd>&darr;</kbd><span>Pan da tastiera</span></div>
           </div>
 
+          <span class="section-title">Stato e blocco singolo</span>
+          <ul class="help-list">
+            <li><b>Stato</b> apre il pannello con G modali, M recenti, N, F, S, T e posizione X/Y/Z del blocco corrente.</li>
+            <li>Le variabili Macro B sono divise in <b>fisse</b> e <b>variabili</b> (a ciclo), con valore corrente, iniziale e storico delle passate.</li>
+            <li><b>Blocco singolo</b> attivo: ogni <b>Cycle Start</b> esegue un solo blocco. Disattivalo per l'esecuzione continua; <b>Cycle Stop</b> la interrompe.</li>
+            <li><b>Reset esecuzione</b> riporta il disegno all'anteprima completa e i valori alla vista finale.</li>
+          </ul>
+
           <span class="section-title">Note tecniche</span>
           <ul class="help-list">
             <li>Proiezioni ortogonali pure: nessuna vista 3D, nessun WebGL.</li>
@@ -322,7 +390,7 @@
           <p class="help-p"><b>iPhone / Safari:</b> tocca <b>Condividi</b> &rarr; <b>Aggiungi alla schermata Home</b>. L'app si apre a schermo intero, rispetta le safe-area e funziona anche offline dopo il primo caricamento.</p>
           <p class="help-p"><b>Desktop:</b> icona di installazione nella barra degli indirizzi di Chrome/Edge.</p>
 
-          <p class="fine">GT-Graphic <span id="appVersion">v1.2.1</span> &middot; Canvas 2D &middot; ISO/Fanuc</p>
+          <p class="fine">GT-Graphic <span id="appVersion">v1.3.0</span> &middot; Canvas 2D &middot; ISO/Fanuc</p>
         </section>
       </div>
     </aside>

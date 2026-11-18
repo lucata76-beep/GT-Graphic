@@ -22,6 +22,8 @@
     mode: 'pan',
     tab: 'files',
     colorMode: 'type',
+    activeFileId: null,
+    sim: { single: true, step: -1, running: false, timer: 0 },
     pendingMode: 'open',
     busy: false
   };
@@ -119,7 +121,327 @@
     for (var j = 0; j < pages.length; j++) {
       pages[j].classList.toggle('active', pages[j].id === 'page-' + tab);
     }
+    if (tab === 'state') renderState();
+    updateSimUI();
     if (open !== false) openPanel();
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Stato esecuzione / Macro B                                          */
+  /* ------------------------------------------------------------------ */
+  var KIND_LABEL = {
+    motion: 'Movimento',
+    macro: 'Macro B',
+    'if': 'Salto IF',
+    goto: 'GOTO',
+    misc: 'Stato / M',
+    stop: 'Fine programma',
+    unsupported: 'Non supportato',
+    error: 'Errore'
+  };
+
+  function activeFile() {
+    if (!state.files.length) {
+      state.activeFileId = null;
+      return null;
+    }
+    for (var i = 0; i < state.files.length; i++) {
+      if (state.files[i].id === state.activeFileId) return state.files[i];
+    }
+    state.activeFileId = state.files[0].id;
+    return state.files[0];
+  }
+
+  function activeSteps(f) {
+    return (f && f.program && f.program.steps) ? f.program.steps : [];
+  }
+
+  function varValueAt(info, step) {
+    if (!info || !info.values || !info.values.length) return 0;
+    var lo = 0, hi = info.values.length - 1, val = 0;
+    while (lo <= hi) {
+      var mid = (lo + hi) >> 1;
+      if (info.values[mid].step <= step) {
+        val = info.values[mid].value;
+        lo = mid + 1;
+      } else {
+        hi = mid - 1;
+      }
+    }
+    return val;
+  }
+
+  function fmtVar(v) {
+    if (!isFinite(v)) return '--';
+    var n = Number(v);
+    var abs = Math.abs(n);
+    var digits = abs >= 100 ? 2 : (abs >= 1 ? 4 : 5);
+    var s = n.toFixed(digits);
+    s = s.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+    if (s === '-0') s = '0';
+    return s;
+  }
+
+  function chipList(values, cls, prefix) {
+    if (!values || !values.length) return '&mdash;';
+    return values.map(function (v) {
+      return '<span class="state-chip ' + cls + '">' + esc((prefix || '') + v) + '</span>';
+    }).join('');
+  }
+
+  function renderState() {
+    var f = activeFile();
+    var steps = activeSteps(f);
+    var has = !!f;
+    var atStep = has && state.sim.step >= 0 && state.sim.step < steps.length;
+    if (has && steps.length && state.sim.step >= steps.length) {
+      state.sim.step = steps.length - 1;
+      atStep = true;
+    }
+    var cur = (has && steps.length) ? (atStep ? steps[state.sim.step] : steps[steps.length - 1]) : null;
+
+    var fileEl = $('stateFile');
+    if (fileEl) {
+      fileEl.textContent = has
+        ? f.name + ' \u00b7 ' + steps.length + ' blocchi'
+        : 'Nessun programma';
+    }
+
+    var badge = $('stateBadge');
+    if (badge) {
+      badge.className = 'state-badge is-ready';
+      if (!has) {
+        badge.textContent = '\u2014';
+      } else if (state.sim.running) {
+        badge.textContent = 'RUN';
+        badge.className = 'state-badge is-run';
+      } else if (!steps.length) {
+        badge.textContent = 'VUOTO';
+      } else if (state.sim.step >= steps.length - 1) {
+        badge.textContent = 'END';
+        badge.className = 'state-badge is-end';
+      } else if (state.sim.step >= 0) {
+        badge.textContent = 'STEP';
+        badge.className = 'state-badge is-step';
+      } else {
+        badge.textContent = 'PRONTO';
+      }
+    }
+
+    var note = $('stateNote');
+    if (note) {
+      if (!has) {
+        note.textContent = 'Apri un programma per vedere G, M, N, F, S e le variabili Macro B.';
+      } else if (!steps.length) {
+        note.textContent = 'Nessun blocco eseguibile nel programma.';
+      } else if (state.sim.running) {
+        note.textContent = 'Esecuzione continua \u00b7 blocco ' + (state.sim.step + 1) + ' di ' + steps.length + '.';
+      } else if (atStep) {
+        note.textContent = 'Blocco ' + (state.sim.step + 1) + ' di ' + steps.length +
+          ' \u00b7 riga ' + cur.line + ' \u00b7 ' + (KIND_LABEL[cur.kind] || cur.kind) + '.';
+      } else {
+        note.textContent = 'Anteprima valori finali. ' + (state.sim.single
+          ? 'Premi Cycle Start per eseguire un blocco per volta.'
+          : 'Premi Cycle Start per avviare l\u2019esecuzione continua.');
+      }
+    }
+
+    if ($('stateG')) $('stateG').innerHTML = chipList(cur ? cur.g : [], 'g');
+    if ($('stateM')) {
+      $('stateM').innerHTML = chipList(
+        cur ? ((cur.mRecent && cur.mRecent.length) ? cur.mRecent : cur.m) : [],
+        'm', 'M'
+      );
+    }
+    if ($('stateN')) $('stateN').textContent = cur && cur.n ? cur.n : '\u2014';
+    if ($('stateF')) $('stateF').textContent = cur && cur.f > 0 ? Math.round(cur.f) + ' mm/min' : '\u2014';
+    if ($('stateS')) $('stateS').textContent = cur && cur.s > 0 ? Math.round(cur.s) + ' rpm' : '\u2014';
+    if ($('stateT')) $('stateT').textContent = cur && cur.t !== null && cur.t !== undefined ? 'T' + cur.t : '\u2014';
+    if ($('statePos')) {
+      $('statePos').textContent = cur
+        ? 'X ' + fmt(cur.x - state.origin.x) + '  \u00b7  Y ' + fmt(cur.y - state.origin.y) +
+          '  \u00b7  Z ' + fmt(cur.z - state.origin.z)
+        : 'X \u2014  \u00b7  Y \u2014  \u00b7  Z \u2014';
+    }
+    if ($('stateBlock')) {
+      if (cur) {
+        $('stateBlock').innerHTML = 'Riga ' + cur.line + ' \u00b7 ' +
+          esc(KIND_LABEL[cur.kind] || cur.kind) + '<br><code>' + esc(cur.block) + '</code>';
+      } else {
+        $('stateBlock').textContent = 'Nessun blocco';
+      }
+    }
+
+    var info = (f && f.program && f.program.macros && f.program.macros.variableInfo)
+      ? f.program.macros.variableInfo : {};
+    var names = Object.keys(info).sort(function (a, b) { return Number(a) - Number(b); });
+    var fixedRows = [];
+    var cycleRows = [];
+
+    names.forEach(function (name) {
+      var vi = info[name];
+      var value = atStep ? varValueAt(vi, state.sim.step) : vi.current;
+      var kind = vi.kind || 'var';
+      var badgeLabel = kind === 'fixed' ? 'FISSA' : (kind === 'cycle' ? 'CICLO' : 'VAR');
+      var badgeClass = kind === 'fixed' ? 'is-fixed' : (kind === 'cycle' ? 'is-cycle' : 'is-var');
+      var meta = (vi.assignments === 1 ? '1 assegnazione' : vi.assignments + ' passate') +
+        ' \u00b7 riga ' + vi.lastLine;
+      var html = '<div class="var-row">' +
+        '<div class="var-main">' +
+          '<span class="var-name">#' + esc(name) + '</span>' +
+          '<span class="var-value">' + fmtVar(value) + '</span>' +
+          '<span class="var-badge ' + badgeClass + '">' + badgeLabel + '</span>' +
+        '</div>' +
+        '<div class="var-meta"><span>' + meta + '</span><span>iniz. ' + fmtVar(vi.initial) + '</span></div>';
+
+      if (kind !== 'fixed' && vi.values && vi.values.length > 1) {
+        var hist = vi.values.filter(function (v) {
+          return !atStep || v.step <= state.sim.step;
+        });
+        if (hist.length > 40) hist = hist.slice(-40);
+        if (hist.length) {
+          html += '<details class="var-history"><summary>storico (' + hist.length +
+            (vi.truncated ? '+' : '') + ')</summary><div class="var-history-list">';
+          hist.forEach(function (v) {
+            html += '<div class="var-history-row' +
+              (atStep && v.step === state.sim.step ? ' is-current' : '') + '">' +
+              '<span>B' + (v.step + 1) + '</span>' +
+              '<span>' + fmtVar(v.value) + '</span>' +
+              '<span>r.' + v.line + '</span>' +
+            '</div>';
+          });
+          html += '</div></details>';
+        }
+      }
+      html += '</div>';
+      if (kind === 'fixed') fixedRows.push(html);
+      else cycleRows.push(html);
+    });
+
+    if ($('varFixed')) {
+      $('varFixed').innerHTML = fixedRows.length ? fixedRows.join('')
+        : (names.length ? '<div class="var-empty">Nessuna variabile fissa.</div>'
+          : '<div class="var-empty">Nessuna variabile Macro B nel programma.</div>');
+    }
+    if ($('varCycle')) {
+      $('varCycle').innerHTML = cycleRows.length ? cycleRows.join('')
+        : (names.length ? '<div class="var-empty">Nessuna variabile oltre alle fisse.</div>' : '');
+    }
+    if ($('varFixedCount')) $('varFixedCount').textContent = fixedRows.length;
+    if ($('varCycleCount')) $('varCycleCount').textContent = cycleRows.length;
+    if ($('varCount')) $('varCount').textContent = names.length + (names.length === 1 ? ' variabile' : ' variabili');
+  }
+
+  function updateSimUI() {
+    var f = activeFile();
+    var steps = activeSteps(f);
+    var has = !!f && steps.length > 0;
+    var atEnd = has && state.sim.step >= steps.length - 1;
+    var single = $('btnSingle');
+    if (single) {
+      single.setAttribute('aria-pressed', state.sim.single ? 'true' : 'false');
+      single.classList.toggle('active', state.sim.single);
+    }
+    if ($('btnCycleStart')) $('btnCycleStart').disabled = !has || atEnd || state.sim.running;
+    if ($('btnCycleStop')) $('btnCycleStop').disabled = !state.sim.running;
+    if ($('btnSimReset')) $('btnSimReset').disabled = !has || (state.sim.step < 0 && !state.sim.running);
+    if ($('btnState')) $('btnState').classList.toggle('active', state.tab === 'state');
+  }
+
+  function clearSimTimer() {
+    if (state.sim.timer) {
+      clearTimeout(state.sim.timer);
+      state.sim.timer = 0;
+    }
+  }
+
+  function resetSim(showToast) {
+    clearSimTimer();
+    state.sim.running = false;
+    state.sim.step = -1;
+    GTViewer.setProgress(null);
+    if (state.tab === 'state') renderState();
+    updateSimUI();
+    if (showToast) toast('Esecuzione azzerata');
+  }
+
+  function stepOnce() {
+    var f = activeFile();
+    var steps = activeSteps(f);
+    if (!f || !steps.length) {
+      toast('Nessun programma caricato');
+      return;
+    }
+    if (state.sim.step >= steps.length - 1) {
+      state.sim.running = false;
+      clearSimTimer();
+      renderState();
+      updateSimUI();
+      toast('Programma terminato');
+      return;
+    }
+    state.sim.step++;
+    var st = steps[state.sim.step];
+    GTViewer.setProgress(f.id, st.segCount, st.segIndex);
+    if (st.kind === 'stop' || state.sim.step >= steps.length - 1) {
+      state.sim.running = false;
+      clearSimTimer();
+      if (state.sim.step >= steps.length - 1) toast('Programma terminato');
+    }
+    if (state.tab === 'state') renderState();
+    updateSimUI();
+  }
+
+  function cycleStart() {
+    var f = activeFile();
+    var steps = activeSteps(f);
+    if (!f) {
+      toast('Apri un programma per eseguire');
+      showTab('files');
+      return;
+    }
+    if (!steps.length) {
+      toast('Nessun blocco eseguibile');
+      return;
+    }
+    if (state.sim.running) return;
+    if (state.sim.step >= steps.length - 1) {
+      toast('Programma terminato: premi Reset esecuzione');
+      return;
+    }
+    if (state.sim.single) {
+      stepOnce();
+      return;
+    }
+    state.sim.running = true;
+    updateSimUI();
+    stepOnce();
+    if (state.sim.running) {
+      state.sim.timer = setTimeout(function runNext() {
+        if (!state.sim.running) return;
+        stepOnce();
+        if (state.sim.running) state.sim.timer = setTimeout(runNext, 120);
+      }, 120);
+    }
+  }
+
+  function cycleStop() {
+    state.sim.running = false;
+    clearSimTimer();
+    if (state.tab === 'state') renderState();
+    updateSimUI();
+    toast('Cycle Stop');
+  }
+
+  function toggleSingle() {
+    state.sim.single = !state.sim.single;
+    if (state.sim.single && state.sim.running) {
+      state.sim.running = false;
+      clearSimTimer();
+    }
+    if (state.tab === 'state') renderState();
+    updateSimUI();
+    toast(state.sim.single ? 'Blocco singolo attivo' : 'Esecuzione continua attiva');
   }
 
   /* ------------------------------------------------------------------ */
@@ -299,6 +621,9 @@
       return;
     }
 
+    state.activeFileId = state.files[state.files.length - 1].id;
+    resetSim(false);
+
     if (state.files.length > 1) {
       state.colorMode = 'file';
       GTViewer.setColorMode('file');
@@ -350,6 +675,10 @@
   function removeFile(id) {
     var removed = state.files.filter(function (f) { return f.id === id; })[0];
     state.files = state.files.filter(function (f) { return f.id !== id; });
+    if (!state.files.some(function (f) { return f.id === state.activeFileId; })) {
+      state.activeFileId = state.files.length ? state.files[0].id : null;
+    }
+    resetSim(false);
     if (state.files.length <= 1 && state.colorMode === 'file') setColorMode('type');
     var sel = GTViewer.getSelection();
     if (sel && removed && sel.file.id === id) {
@@ -398,7 +727,8 @@
     state.files.forEach(function (f) {
       var p = f.program;
       var row = document.createElement('div');
-      row.className = 'file-row' + (f.visible ? '' : ' is-hidden');
+      row.className = 'file-row' + (f.visible ? '' : ' is-hidden') +
+        (f.id === state.activeFileId ? ' is-active' : '');
       row.setAttribute('data-id', String(f.id));
 
       var warnHtml = '';
@@ -619,6 +949,7 @@
     GTViewer.setOrigin(state.origin);
     updateOriginUI();
     updateViewUI();
+    if (state.tab === 'state') renderState();
     var sel = GTViewer.getSelection();
     if (sel) {
       renderInspector(sel);
@@ -691,6 +1022,8 @@
   /* ------------------------------------------------------------------ */
   function closeFiles() {
     state.files = [];
+    state.activeFileId = null;
+    resetSim(false);
     setColorMode('type');
     GTViewer.setFiles([]);
     GTViewer.clearSelection();
@@ -708,6 +1041,8 @@
 
   function exitSession() {
     state.files = [];
+    state.activeFileId = null;
+    resetSim(false);
     state.colorMode = 'type';
     GTViewer.setColorMode('type');
     updateColorModeUI();
@@ -730,6 +1065,8 @@
   function restartSession() {
     $('exitScreen').classList.add('hidden');
     state.files = [];
+    state.activeFileId = null;
+    resetSim(false);
     state.origin = { x: 0, y: 0, z: 0 };
     GTViewer.setFiles([]);
     GTViewer.setOrigin(state.origin);
@@ -808,6 +1145,11 @@
 
     $('btnPanel').addEventListener('click', togglePanel);
     $('btnPanelClose').addEventListener('click', closePanel);
+    $('btnState').addEventListener('click', function () { showTab('state'); });
+    $('btnSingle').addEventListener('click', toggleSingle);
+    $('btnCycleStart').addEventListener('click', cycleStart);
+    $('btnCycleStop').addEventListener('click', cycleStop);
+    $('btnSimReset').addEventListener('click', function () { resetSim(true); });
 
     var tabs = document.querySelectorAll('.tab');
     for (var t = 0; t < tabs.length; t++) {
@@ -831,6 +1173,13 @@
       var id = Number(row.getAttribute('data-id'));
       if (e.target.closest('.file-eye')) { toggleFile(id); return; }
       if (e.target.closest('.file-del')) { removeFile(id); return; }
+      if (state.activeFileId !== id) {
+        state.activeFileId = id;
+        resetSim(false);
+        renderFiles();
+        renderState();
+        updateSimUI();
+      }
     });
 
     $('btnApplyOrigin').addEventListener('click', applyOriginInputs);
@@ -974,6 +1323,8 @@
     updateViewUI();
     updateOriginUI();
     renderFiles();
+    renderState();
+    updateSimUI();
     updateEmpty();
     updateStatus();
     renderInspector(null);
@@ -981,7 +1332,7 @@
     updateDroThird(null);
     updateColorModeUI();
 
-    var appVersion = 'v1.2.1';
+    var appVersion = 'v1.3.0';
     var versionNodes = document.querySelectorAll('.js-version');
     for (var vi = 0; vi < versionNodes.length; vi++) {
       versionNodes[vi].textContent = appVersion;

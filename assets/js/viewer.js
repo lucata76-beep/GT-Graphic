@@ -47,6 +47,7 @@
     files: [],
     colorMode: 'type',
     mode: 'pan',
+    progress: null,
     selected: null,
     hover: null,
     box: null,
@@ -438,54 +439,103 @@
     var uMin = cx - (W / 2) / sc - margin, uMax = cx + (W / 2) / sc + margin;
     var vMin = cy - (H / 2) / sc - margin, vMax = cy + (H / 2) / sc + margin;
 
+    function inView(seg) {
+      var b = seg.bounds;
+      var bu0 = idxU === 0 ? b.minX : (idxU === 1 ? b.minY : b.minZ);
+      var bu1 = idxU === 0 ? b.maxX : (idxU === 1 ? b.maxY : b.maxZ);
+      var bv0 = idxV === 0 ? b.minX : (idxV === 1 ? b.minY : b.minZ);
+      var bv1 = idxV === 0 ? b.maxX : (idxV === 1 ? b.maxY : b.maxZ);
+      return !(bu1 < uMin || bu0 > uMax || bv1 < vMin || bv0 > vMax);
+    }
+
+    function strokeSegs(segs, st, fromIndex, toIndex) {
+      ctx.beginPath();
+      var drew = false;
+      for (var si = 0; si < segs.length; si++) {
+        var seg = segs[si];
+        if (fromIndex !== null && seg.index < fromIndex) continue;
+        if (toIndex !== null && seg.index >= toIndex) continue;
+        if (!inView(seg)) continue;
+
+        var p = seg.pts;
+        var step = 3;
+        if (sc < 0.35 && p.length > 90) step = 9;
+        else if (sc < 1.2 && p.length > 90) step = 6;
+
+        var pu = idxU === 0 ? p[0] : (idxU === 1 ? p[1] : p[2]);
+        var pv = idxV === 0 ? p[0] : (idxV === 1 ? p[1] : p[2]);
+        ctx.moveTo(hw + (pu - cx) * sc, hh - (pv - cy) * sc);
+        for (var k = step; k < p.length; k += step) {
+          var qu = idxU === 0 ? p[k] : (idxU === 1 ? p[k + 1] : p[k + 2]);
+          var qv = idxV === 0 ? p[k] : (idxV === 1 ? p[k + 1] : p[k + 2]);
+          ctx.lineTo(hw + (qu - cx) * sc, hh - (qv - cy) * sc);
+        }
+        var last = p.length - 3;
+        var lu = idxU === 0 ? p[last] : (idxU === 1 ? p[last + 1] : p[last + 2]);
+        var lv = idxV === 0 ? p[last] : (idxV === 1 ? p[last + 1] : p[last + 2]);
+        ctx.lineTo(hw + (lu - cx) * sc, hh - (lv - cy) * sc);
+        drew = true;
+      }
+      if (!drew) return;
+      ctx.strokeStyle = st.color;
+      ctx.lineWidth = st.width;
+      ctx.globalAlpha = st.alpha;
+      ctx.setLineDash(st.dash);
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.stroke();
+    }
+
     for (var fi = 0; fi < S.files.length; fi++) {
       var f = S.files[fi];
       if (!f.visible || !f.program) continue;
+      var prog = S.progress && S.progress.fileId === f.id ? S.progress : null;
       for (var t = 0; t < 4; t++) {
         var segs = f.program.byType[t];
         if (!segs || !segs.length) continue;
         var st = styleFor(f, t);
-        ctx.beginPath();
-        var drew = false;
-        for (var si = 0; si < segs.length; si++) {
-          var seg = segs[si];
-          var b = seg.bounds;
-          var bu0 = idxU === 0 ? b.minX : (idxU === 1 ? b.minY : b.minZ);
-          var bu1 = idxU === 0 ? b.maxX : (idxU === 1 ? b.maxY : b.maxZ);
-          var bv0 = idxV === 0 ? b.minX : (idxV === 1 ? b.minY : b.minZ);
-          var bv1 = idxV === 0 ? b.maxX : (idxV === 1 ? b.maxY : b.maxZ);
-          if (bu1 < uMin || bu0 > uMax || bv1 < vMin || bv0 > vMax) continue;
-
-          var p = seg.pts;
-          var step = 3;
-          if (sc < 0.35 && p.length > 90) step = 9;
-          else if (sc < 1.2 && p.length > 90) step = 6;
-
-          var u0 = p[0], v0 = p[1];
-          // indici corretti nel punto 3D
-          var pu = idxU === 0 ? p[0] : (idxU === 1 ? p[1] : p[2]);
-          var pv = idxV === 0 ? p[0] : (idxV === 1 ? p[1] : p[2]);
-          ctx.moveTo(hw + (pu - cx) * sc, hh - (pv - cy) * sc);
-          for (var k = step; k < p.length; k += step) {
-            var qu = idxU === 0 ? p[k] : (idxU === 1 ? p[k + 1] : p[k + 2]);
-            var qv = idxV === 0 ? p[k] : (idxV === 1 ? p[k + 1] : p[k + 2]);
-            ctx.lineTo(hw + (qu - cx) * sc, hh - (qv - cy) * sc);
-          }
-          // chiudi sempre sull'ultimo punto esatto
-          var last = p.length - 3;
-          var lu = idxU === 0 ? p[last] : (idxU === 1 ? p[last + 1] : p[last + 2]);
-          var lv = idxV === 0 ? p[last] : (idxV === 1 ? p[last + 1] : p[last + 2]);
-          ctx.lineTo(hw + (lu - cx) * sc, hh - (lv - cy) * sc);
-          drew = true;
+        if (!prog) {
+          strokeSegs(segs, st, null, null);
+          continue;
         }
-        if (!drew) continue;
-        ctx.strokeStyle = st.color;
-        ctx.lineWidth = st.width;
-        ctx.globalAlpha = st.alpha;
-        ctx.setLineDash(st.dash);
-        ctx.lineJoin = 'round';
-        ctx.lineCap = 'round';
-        ctx.stroke();
+
+        strokeSegs(segs, {
+          color: st.color,
+          width: 1,
+          alpha: 0.17,
+          dash: st.dash
+        }, prog.count, null);
+
+        strokeSegs(segs, st, 0, prog.count);
+
+        if (prog.currentSegIndex !== null && prog.currentSegIndex !== undefined) {
+          var cur = null;
+          for (var qi = 0; qi < segs.length; qi++) {
+            if (segs[qi].index === prog.currentSegIndex) { cur = segs[qi]; break; }
+          }
+          if (cur && inView(cur)) {
+            strokeSegs([cur], {
+              color: C.white,
+              width: Math.max(2.4, st.width + 1.4),
+              alpha: 1,
+              dash: []
+            }, null, null);
+            var cp = cur.pts;
+            var cl = cp.length - 3;
+            var cu = idxU === 0 ? cp[cl] : (idxU === 1 ? cp[cl + 1] : cp[cl + 2]);
+            var cv = idxV === 0 ? cp[cl] : (idxV === 1 ? cp[cl + 1] : cp[cl + 2]);
+            ctx.beginPath();
+            ctx.arc(hw + (cu - cx) * sc, hh - (cv - cy) * sc, 4, 0, Math.PI * 2);
+            ctx.fillStyle = C.white;
+            ctx.globalAlpha = 1;
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(hw + (cu - cx) * sc, hh - (cv - cy) * sc, 7, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(244,248,251,0.45)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+          }
+        }
       }
     }
     ctx.globalAlpha = 1;
@@ -981,6 +1031,20 @@
       p[A.w] = S.origin[A.w];
       return p;
     },
+    setProgress: function (fileId, count, currentSegIndex) {
+      if (!fileId) {
+        S.progress = null;
+      } else {
+        S.progress = {
+          fileId: fileId,
+          count: Math.max(0, Math.round(Number(count) || 0)),
+          currentSegIndex: (currentSegIndex === null || currentSegIndex === undefined)
+            ? null : Math.round(Number(currentSegIndex))
+        };
+      }
+      requestRender();
+    },
+    getProgress: function () { return S.progress; },
     resize: resize,
     render: render
   };

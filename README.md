@@ -6,7 +6,7 @@
 
 - **Demo online:** <https://lucata76-beep.github.io/GT-Graphic/>
 - **Repository:** <https://github.com/lucata76-beep/GT-Graphic>
-- **Versione:** 1.2.1
+- **Versione:** 1.3.0
 
 ![Vista X-Y su desktop](docs/desktop-xy.png)
 
@@ -22,14 +22,15 @@
 | **Interroga punti** | Snap magnetico su vertici, estremi e centri arco entro una tolleranza in pixel (16 px mouse, 26 px touch). HUD con coordinate X/Y/Z, tipo movimento, numero di riga, blocco originale, lunghezza e distanza dal vertice precedente. |
 | **Origine pezzo** | Simbolo `(0,0,0)` sempre visibile, DRO live, tre assi del piano attivo, `Imposta da punto grafico`, inserimento manuale X/Y/Z con pulsanti `±`, `Ripristina origine originale`. Griglia, DRO e interrogazione si ricalcolano rispetto all'origine attiva. |
 | **Multi-programma** | Elenco file con colore dedicato, toggle mostra/nascondi, rimozione, confronto sgrossatura/finitura con colorazione per file o per tipo di movimento. |
-| **Macro B** | Variabili `#`, espressioni con funzioni trigonometriche, assegnazioni, `IF[...]GOTO`, `GOTO`, etichette `N`, variabili in `T`/`H`/`D`/`F`. Loop espansi fino a 50.000 blocchi con avviso sui limiti. |
+| **Stato / Esecuzione** | Pannello laterale `Stato` con G/M/N/F/S/T, posizione X/Y/Z, blocco corrente e variabili Macro B. `Blocco singolo`, `Cycle Start`, `Cycle Stop`, `Reset`; percorso eseguito evidenziato e tratto futuro attenuato. |
+| **Macro B** | Variabili `#`, espressioni con funzioni trigonometriche, assegnazioni, `IF[...]GOTO`, `GOTO`, etichette `N`, variabili in `T`/`H`/`D`/`F`. Loop espansi fino a 50.000 blocchi con avviso sui limiti. Il pannello Stato separa i valori fissi dalle variabili (a ciclo) e conserva lo storico delle passate. |
 | **PWA / iOS** | `manifest.json`, service worker con cache offline, icone 192/512/maskable, `apple-touch-icon`, `100dvh`, `safe-area-inset`, `touch-action: none` sul canvas, pulsanti con area di tocco minima 44×44 px. |
 
 ### Interfaccia
 
 Palette industriale ad alto contrasto: sfondo `#0d1117`, griglia a basso affaticamento, **G00** tratteggiato ambra/rosso, **G01** ciano continuo, **G02/G03** giallo e magenta. Pannelli flottanti semitrasparenti con `backdrop-filter: blur(8px)`, toolbar compatta a due righe su iPhone, legenda colori sempre leggibile. La versione dell'app è indicata accanto al logo nell'appbar e nel pannello Aiuto.
 
-| Desktop, vista X-Z | iPhone, pannello a scomparsa |
+| Desktop, vista X-Z | iPhone, pannello Stato |
 |---|---|
 | ![Vista X-Z](docs/desktop-xz.png) | ![Pannello iPhone](docs/mobile-panel.png) |
 
@@ -79,6 +80,14 @@ Il selettore file non usa filtri `accept`, quindi iOS mostra tutti i documenti d
 
 Altre scorciatoie desktop: `+`/`-` zoom, `P` pan, `I` interroga, `Z` zoom finestra, `O` pannello origine, frecce per traslare, `Ctrl/Cmd+O` per aprire un file.
 
+### Stato e blocco singolo
+
+Aprire **Stato** dalla toolbar o il tab **Stato** nel pannello laterale. Il pannello mostra il file attivo, il blocco corrente, i codici G modali, gli ultimi M, N, F, S, T e la posizione X/Y/Z. Le variabili Macro B sono divise in **valori fissi** e **valori variabili (a ciclo)**, con valore corrente, valore iniziale, numero di assegnazioni e storico delle passate.
+
+Con **Blocco singolo** attivo, ogni pressione di **Cycle Start** esegue un solo blocco G-code e aggiorna percorso e valori. Disattivando **Blocco singolo**, **Cycle Start** avvia l'esecuzione continua (circa 120 ms per blocco) e **Cycle Stop** la interrompe. **Reset esecuzione** riporta il viewer all'anteprima completa. Il file attivo si seleziona cliccando la riga nell'elenco `File`.
+
+![Pannello Stato con percorso eseguito e variabili Macro B](docs/desktop-state.png)
+
 ---
 
 ## Formati e parser
@@ -95,6 +104,7 @@ Il parser è in `assets/js/parser.js`, non usa dipendenze e produce segmenti con
 | `G20` / `G21` | Pollici / millimetri, conversione immediata in mm |
 | `G54`–`G59` | Ignorate come offset: l'app usa l'origine impostata dall'utente |
 | `M`, `S`, `T`, `F`, `G40`–`G43` | Non geometrici: conservati nel blocco, non tracciati |
+| `G94` / `G95` | Modalità avanzamento visualizzata nel pannello Stato; non modifica la geometria |
 | `#100=...`, `#777` | Variabili Macro B, espressioni e funzioni; il valore viene risolto prima della geometria |
 | `IF[...]GOTO`, `GOTO`, `N...` | Salti condizionali e incondizionati, etichette di blocco |
 | `G28`, `G30`, `G52`, `G53`, `G92`, `G68` | Non tracciati; avviso in elenco. `G52` avvisa solo se l'offset è diverso da zero |
@@ -190,9 +200,9 @@ GT-Graphic/
 ├── assets/
 │   ├── css/app.css            # tema industriale, responsive, safe-area
 │   ├── js/
-│   │   ├── parser.js          # parser ISO/Fanuc
-│   │   ├── viewer.js          # motore Canvas 2D ortogonale
-│   │   ├── app.js             # stato UI, file, inspector, origine
+│   │   ├── parser.js          # parser ISO/Fanuc + timeline esecuzione
+│   │   ├── viewer.js          # motore Canvas 2D ortogonale + progresso
+│   │   ├── app.js             # UI, file, inspector, origine, Stato/Blocco
 │   │   └── demo.js            # demo incorporata (generata)
 │   └── icons/                 # 192, 512, maskable, apple-touch, favicon
 ├── samples/                   # DEMO_PART.nc, SG1-1, FT1-2, SFORMO_VAR
@@ -214,7 +224,7 @@ python3 -m http.server 8000 &
 python3 tools/test-ui.py
 ```
 
-La suite UI usa Playwright con Chromium di sistema e verifica anche l'assenza di errori console, la dimensione minima dei pulsanti, il pan a un dito, il pinch-to-zoom, l'apertura di un file senza estensione tramite il selettore file reale e il caricamento del programma Macro B `SFORMO_VAR`.
+La suite UI usa Playwright con Chromium di sistema e verifica anche l'assenza di errori console, la dimensione minima dei pulsanti, il pan a un dito, il pinch-to-zoom, l'apertura di un file senza estensione tramite il selettore file reale, il caricamento del programma Macro B `SFORMO_VAR`, il pannello **Stato** con variabili fisse/a ciclo, il **Blocco singolo** e **Cycle Stop**.
 
 Stato attuale: **tutti i test parser e UI superati**, nessun errore console, caricamento offline verificato.
 
@@ -226,7 +236,7 @@ Il workflow `.github/workflows/deploy.yml` è incluso e pubblica la radice del r
 
 ```bash
 git add -A
-git commit -m "GT-Graphic 1.2.1"
+git commit -m "GT-Graphic 1.3.0"
 git push origin main
 ```
 

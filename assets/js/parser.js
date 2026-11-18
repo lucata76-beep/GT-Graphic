@@ -412,6 +412,13 @@
     var unitScale = 1;        // mm per unita' programma
     var unitName = 'mm';
     var feed = 0;             // mm/min
+    var spindle = 0;          // rpm
+    var tool = null;          // numero utensile
+    var cutter = 40;          // G40/G41/G42
+    var toolLength = 49;      // G43/G44/G49
+    var workOffset = 54;      // G54-G59
+    var feedMode = 94;        // G94/G95
+    var mRecent = [];
     var programName = null;
     var blockCount = 0;
     var vars = Object.create(null);
@@ -422,6 +429,15 @@
     var macroLimit = false;
     var maxMacroSteps = opts.maxMacroSteps || MACRO_MAX_STEPS;
     var maxMacroSegments = opts.maxSegments || MACRO_MAX_SEGMENTS;
+    var steps = [];
+    var varEvents = [];
+    var currentVarChanges = [];
+    var currentM = [];
+    var currentKind = 'misc';
+    var currentJump = null;
+    var currentMeaningful = false;
+    var lastSegIndex = null;
+    var MAX_VAR_HISTORY = 2000;
 
     function warn(lineNo, block, message) {
       var key = message;
@@ -448,6 +464,8 @@
     }
 
     function pushSegment(seg) {
+      seg.index = segments.length;
+      lastSegIndex = seg.index;
       segments.push(seg);
       byType[seg.type].push(seg);
       stats.segments++;
@@ -472,6 +490,57 @@
       if (b.maxY > bounds.maxY) bounds.maxY = b.maxY;
       if (b.minZ < bounds.minZ) bounds.minZ = b.minZ;
       if (b.maxZ > bounds.maxZ) bounds.maxZ = b.maxZ;
+    }
+
+    function setVar(name, value) {
+      var old = vars[name];
+      if (typeof old === 'undefined') old = 0;
+      vars[name] = value;
+      currentVarChanges.push({ name: name, value: value, old: old });
+    }
+
+    function activeG() {
+      var all = [
+        'G' + motion,
+        'G' + planeNum,
+        unitName === 'in' ? 'G20' : 'G21',
+        absolute ? 'G90' : 'G91',
+        'G' + cutter,
+        'G' + toolLength,
+        'G' + workOffset,
+        'G' + feedMode
+      ];
+      var out = [];
+      for (var i = 0; i < all.length; i++) {
+        if (out.indexOf(all[i]) < 0) out.push(all[i]);
+      }
+      return out;
+    }
+
+    function pushStep(lineNo, block, nLabel, kind, jump) {
+      var st = {
+        index: steps.length,
+        line: lineNo,
+        block: block,
+        n: nLabel || activeN,
+        kind: kind || currentKind,
+        jump: (jump === undefined || jump === null) ? null : jump,
+        g: activeG(),
+        m: currentM.slice(),
+        mRecent: mRecent.slice(-6),
+        f: feed,
+        s: spindle,
+        t: tool,
+        x: x, y: y, z: z,
+        segIndex: lastSegIndex,
+        segCount: segments.length,
+        varChanges: currentVarChanges.slice()
+      };
+      steps.push(st);
+      for (var i = 0; i < currentVarChanges.length; i++) {
+        var ch = currentVarChanges[i];
+        varEvents.push({ name: ch.name, value: ch.value, old: ch.old, step: st.index, line: lineNo });
+      }
     }
 
     function makeBounds(pts) {
@@ -701,6 +770,7 @@
         words[letter] = token;
         tokens.push(token);
       }
+      if (tokens.length) currentMeaningful = true;
 
       var suppress = false;
       for (var ti = 0; ti < tokens.length; ti++) {
@@ -743,8 +813,17 @@
         } else if (gi === 68) {
           warn(lineNo, rawBlock, 'G68 (rotazione sistema) non viene applicata al tracciamento.');
           suppress = true;
-        } else if (gi === 41 || gi === 42) {
-          warn(lineNo, rawBlock, 'Compensazione utensile G41/G42 non applicata: viene tracciato il percorso programmato.');
+        } else if (gi === 40 || gi === 41 || gi === 42) {
+          cutter = gi;
+          if (gi === 41 || gi === 42) {
+            warn(lineNo, rawBlock, 'Compensazione utensile G41/G42 non applicata: viene tracciato il percorso programmato.');
+          }
+        } else if (gi === 43 || gi === 44 || gi === 49) {
+          toolLength = gi;
+        } else if (gi === 94 || gi === 95) {
+          feedMode = gi;
+        } else if (gi >= 54 && gi <= 59) {
+          workOffset = gi;
         } else if (gi >= 73 && gi <= 89 && gi !== 80) {
           warn(lineNo, rawBlock, 'Ciclo fisso G' + gi + ' non supportato: la geometria del ciclo non viene tracciata.');
           suppress = true;
@@ -753,6 +832,22 @@
 
       if (words.F) {
         feed = words.F.value * unitScale;
+      }
+
+      for (var wi = 0; wi < tokens.length; wi++) {
+        var wt = tokens[wi];
+        if (wt.letter === 'S') {
+          spindle = wt.value;
+        } else if (wt.letter === 'T') {
+          tool = Math.round(wt.value);
+        } else if (wt.letter === 'M') {
+          var mc = Math.round(wt.value);
+          currentM.push(mc);
+          if (mRecent.indexOf(mc) < 0) {
+            mRecent.push(mc);
+            if (mRecent.length > 8) mRecent.shift();
+          }
+        }
       }
 
       if (words.O && programName === null) {
@@ -767,13 +862,13 @@
         }
       }
 
-      if (suppress) return stop;
-
       var ax = axisValue('X', words);
       var ay = axisValue('Y', words);
       var az = axisValue('Z', words);
       var hasAxis = ax !== null || ay !== null || az !== null;
+      currentKind = stop ? 'stop' : ((hasAxis && !suppress) ? 'motion' : 'misc');
 
+      if (suppress) return stop;
       if (!hasAxis) return stop;
 
       var nx = ax === null ? x : (absolute ? ax : x + ax);
@@ -811,7 +906,7 @@
           warn(lineNo, rawBlock, 'GOTO a etichetta N' + target + ' inesistente: esecuzione interrotta.');
           return { stop: true };
         }
-        return { jump: labels[target] };
+        return { jump: labels[target], target: target };
       }
 
       if (next && next.type === 'KEY' && next.value === 'THEN') {
@@ -821,7 +916,7 @@
             tokens[pos + 1] && tokens[pos + 1].type === 'OP' && tokens[pos + 1].value === '=') {
           var varNo = tokens[pos].value;
           var valRes = macroValue(tokens, pos + 2, lineNo, rawBlock);
-          if (valRes) vars[varNo] = valRes.value;
+          if (valRes) setVar(varNo, valRes.value);
           return null;
         }
         var rest = resolveMacroWords(tokens.slice(pos), vars);
@@ -882,6 +977,13 @@
         break;
       }
 
+      currentVarChanges = [];
+      currentM = [];
+      currentKind = 'misc';
+      currentJump = null;
+      currentMeaningful = false;
+      lastSegIndex = null;
+
       var tokens;
       try {
         tokens = tokenizeMacro(code);
@@ -894,24 +996,39 @@
 
       try {
         if (tokens[0].type === 'KEY' && tokens[0].value === 'IF') {
+          currentMeaningful = true;
           var ifRes = handleIf(tokens, lineNo, trimmed);
-          if (ifRes && ifRes.stop) break;
+          if (ifRes && ifRes.stop) {
+            pushStep(lineNo, trimmed, activeN, 'stop', null);
+            break;
+          }
           if (ifRes && ifRes.jump !== undefined) {
+            currentJump = ifRes.target || null;
+            pushStep(lineNo, trimmed, activeN, 'if', currentJump);
             pc = ifRes.jump;
             macroJumps++;
           } else {
+            pushStep(lineNo, trimmed, activeN, 'if', null);
             pc++;
           }
           continue;
         }
 
         if (tokens[0].type === 'KEY' && tokens[0].value === 'GOTO') {
+          currentMeaningful = true;
           var target = readGotoTarget(tokens, 1, lineNo, trimmed);
-          if (target === null) { pc++; continue; }
+          if (target === null) {
+            pushStep(lineNo, trimmed, activeN, 'goto', null);
+            pc++;
+            continue;
+          }
           if (labels[target] === undefined) {
             warn(lineNo, trimmed, 'GOTO a etichetta N' + target + ' inesistente: esecuzione interrotta.');
+            pushStep(lineNo, trimmed, activeN, 'goto', target);
             break;
           }
+          currentJump = target;
+          pushStep(lineNo, trimmed, activeN, 'goto', target);
           pc = labels[target];
           macroJumps++;
           continue;
@@ -919,6 +1036,7 @@
 
         if (tokens[0].type === 'VAR' &&
             tokens[1] && tokens[1].type === 'OP' && tokens[1].value === '=') {
+          currentMeaningful = true;
           var apos = 0;
           while (apos < tokens.length &&
             tokens[apos].type === 'VAR' &&
@@ -926,23 +1044,28 @@
             var varNo = tokens[apos].value;
             var valRes = macroValue(tokens, apos + 2, lineNo, trimmed);
             if (!valRes) { apos = tokens.length; break; }
-            vars[varNo] = valRes.value;
+            setVar(varNo, valRes.value);
             apos = valRes.pos;
           }
+          var assignStop = false;
           if (apos < tokens.length) {
             var restCode = resolveMacroWords(tokens.slice(apos), vars);
             if (restCode) {
               var stopAssign = executeResolvedBlock(restCode, lineNo, trimmed, activeN);
-              if (stopAssign) break;
+              if (stopAssign) assignStop = true;
             }
           }
+          pushStep(lineNo, trimmed, activeN, assignStop ? 'stop' : 'macro', null);
+          if (assignStop) break;
           pc++;
           continue;
         }
 
         if (tokens[0].type === 'KEY' &&
             (tokens[0].value === 'WHILE' || tokens[0].value === 'DO' || tokens[0].value === 'END')) {
+          currentMeaningful = true;
           warn(lineNo, trimmed, 'WHILE/DO/END non supportati: blocco ignorato.');
+          pushStep(lineNo, trimmed, activeN, 'unsupported', null);
           pc++;
           continue;
         }
@@ -950,11 +1073,15 @@
         var resolved = resolveMacroWords(tokens, vars);
         if (resolved) {
           var stopBlock = executeResolvedBlock(resolved, lineNo, trimmed, activeN);
+          if (currentMeaningful) {
+            pushStep(lineNo, trimmed, activeN, stopBlock ? 'stop' : currentKind, null);
+          }
           if (stopBlock) break;
         }
         pc++;
       } catch (err) {
         warn(lineNo, trimmed, 'Macro: ' + (err && err.message ? err.message : String(err)));
+        if (currentMeaningful) pushStep(lineNo, trimmed, activeN, 'error', null);
         pc++;
       }
 
@@ -965,6 +1092,43 @@
       }
     }
 
+    var variableInfo = {};
+    for (var ve = 0; ve < varEvents.length; ve++) {
+      var ev = varEvents[ve];
+      var info = variableInfo[ev.name];
+      if (!info) {
+        info = variableInfo[ev.name] = {
+          name: ev.name,
+          initial: ev.value,
+          current: ev.value,
+          assignments: 0,
+          firstLine: ev.line,
+          lastLine: ev.line,
+          values: [],
+          truncated: false
+        };
+      }
+      info.assignments++;
+      info.lastLine = ev.line;
+      info.current = ev.value;
+      if (info.values.length >= MAX_VAR_HISTORY) {
+        info.values.shift();
+        info.truncated = true;
+      }
+      info.values.push({ step: ev.step, value: ev.value, line: ev.line });
+    }
+    Object.keys(variableInfo).forEach(function (name) {
+      var info = variableInfo[name];
+      var distinct = {};
+      for (var vi = 0; vi < info.values.length; vi++) {
+        distinct[String(info.values[vi].value)] = 1;
+      }
+      info.distinct = Object.keys(distinct).length;
+      info.kind = info.distinct > 1 ? (info.assignments > 2 ? 'cycle' : 'var') : 'fixed';
+      info.final = vars[name];
+      if (info.values.length) info.initial = info.values[0].value;
+    });
+
     if (!isFinite(bounds.minX)) bounds = null;
 
     return {
@@ -973,13 +1137,16 @@
       lines: lines.length,
       blocks: blockCount,
       segments: segments,
+      steps: steps,
       byType: byType,
       stats: stats,
       bounds: bounds,
       warnings: warnings,
       macros: {
         variables: vars,
+        variableInfo: variableInfo,
         steps: macroSteps,
+        stepCount: steps.length,
         jumps: macroJumps,
         labels: Object.keys(labels).length,
         limitReached: macroLimit
@@ -989,7 +1156,7 @@
   }
 
   root.GTParser = {
-    version: '1.2.0',
+    version: '1.3.0',
     parse: parse,
     PLANES: PLANES,
     fmtNum: fmtNum
