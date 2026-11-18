@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0d1117">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="GT-Graphic - Visualizzatore 2D e analizzatore geometrico di programmi G-Code ISO/Fanuc per desktop e iPhone.">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="GT-Graphic">
+  <meta name="format-detection" content="telephone=no">
+  <title>GT-Graphic - Viewer G-Code 2D</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="assets/css/app.css">
+</head>
+<body>
+
+<!-- Sprite icone SVG -->
+<svg class="sprite" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <symbol id="i-open" viewBox="0 0 24 24"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5H9l2 2h8.5A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5v-11z"/></symbol>
+    <symbol id="i-import" viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 16v2.5A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5V16"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-exit" viewBox="0 0 24 24"><path d="M12 3v9"/><path d="M6.4 6.4a8 8 0 1 0 11.2 0"/></symbol>
+    <symbol id="i-demo" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M10 8.4 16 12l-6 3.6V8.4z"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.2a2.5 2.5 0 1 1 3.7 2.2c-.8.5-1.3 1.1-1.3 2"/><path d="M12 17h.01"/></symbol>
+    <symbol id="i-zoom-in" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7.5"/><path d="M21 21l-4.6-4.6M11 8v6M8 11h6"/></symbol>
+    <symbol id="i-zoom-out" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7.5"/><path d="M21 21l-4.6-4.6M8 11h6"/></symbol>
+    <symbol id="i-window" viewBox="0 0 24 24"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M2 6h14a2 2 0 0 1 2 2v14"/></symbol>
+    <symbol id="i-fit" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></symbol>
+    <symbol id="i-pan" viewBox="0 0 24 24"><path d="M8 13V6.5a1.5 1.5 0 0 1 3 0V12"/><path d="M11 12V5.5a1.5 1.5 0 0 1 3 0V12"/><path d="M14 12V7a1.5 1.5 0 0 1 3 0v7"/><path d="M17 11.5a1.5 1.5 0 0 1 3 0V16a5 5 0 0 1-5 5h-3.2a5 5 0 0 1-4.2-2.3L5 14.6a1.6 1.6 0 0 1 2.5-2l1.5 1.9"/></symbol>
+    <symbol id="i-inspect" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="1.6"/></symbol>
+    <symbol id="i-origin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3"/><path d="M12 3.5v2M12 18.5v2M3.5 12h2M18.5 12h2"/></symbol>
+    <symbol id="i-panel" viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="2"/><path d="M9.5 4v16"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 6.5 12 6.5 21.5 12 21.5 12 18 17.5 12 17.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></symbol>
+    <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M10.6 6.8A9.6 9.6 0 0 1 12 6.7c6 0 9.5 5.3 9.5 5.3a17 17 0 0 1-3.2 3.6"/><path d="M6.3 8.4A17 17 0 0 0 2.5 12S6 17.3 12 17.3c1.4 0 2.7-.3 3.8-.7"/><path d="M9.9 10.2a3 3 0 0 0 4.1 4.2"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6.5 7l1 13h9l1-13"/><path d="M10 11v6M14 11v6"/></symbol>
+    <symbol id="i-warning" viewBox="0 0 24 24"><path d="M12 3.5 21 20H3L12 3.5z"/><path d="M12 9v5M12 17h.01"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H6.5A1.5 1.5 0 0 0 5 4.5v15A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5V8l-5-5z"/><path d="M14 3v5h5"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+    <symbol id="i-reset" viewBox="0 0 24 24"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"/><path d="M3.5 4.5V10H9"/></symbol>
+  </defs>
+</svg>
+
+<div id="app" class="app">
+
+  <!-- ===================== APP BAR ===================== -->
+  <header class="appbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 40 40" width="34" height="34">
+          <rect x="1.5" y="1.5" width="37" height="37" rx="8" fill="#0d141c" stroke="#243244"/>
+          <path d="M9 29V17l7-5 8 4v9l-7 5-8-4z" fill="none" stroke="#22d3ee" stroke-width="1.5"/>
+          <path d="M9 17h15M16 12v17" stroke="#31465c" stroke-width="0.8"/>
+          <circle cx="9" cy="29" r="2" fill="#ff6b4a"/>
+          <path d="M22 21h7M25.5 17.5v7" stroke="#fbbf24" stroke-width="1.4"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <h1>GT-Graphic</h1>
+        <p>G-CODE 2D BACKPLOTTER</p>
+      </div>
+    </div>
+
+    <div class="filebar" role="group" aria-label="Menu File">
+      <button type="button" id="btnOpen" class="btn" title="Apri un programma (Ctrl+O)">
+        <svg class="ico"><use href="#i-open"/></svg><span class="btn-label">Apri</span>
+      </button>
+      <button type="button" id="btnImport" class="btn" title="Importa e sovrapponi altri programmi">
+        <svg class="ico"><use href="#i-import"/></svg><span class="btn-label">Importa</span>
+      </button>
+      <button type="button" id="btnClose" class="btn" title="Chiudi i file e svuota l'area grafica">
+        <svg class="ico"><use href="#i-close"/></svg><span class="btn-label">Chiudi</span>
+      </button>
+      <button type="button" id="btnExit" class="btn" title="Esci e azzera la sessione">
+        <svg class="ico"><use href="#i-exit"/></svg><span class="btn-label">Esci</span>
+      </button>
+    </div>
+
+    <div class="appbar-end">
+      <button type="button" id="btnDemoTop" class="btn btn-accent" title="Carica il programma dimostrativo">
+        <svg class="ico"><use href="#i-demo"/></svg><span class="btn-label">Demo</span>
+      </button>
+      <button type="button" id="btnHelp" class="icon-btn" aria-label="Aiuto e scorciatoie" title="Aiuto">
+        <svg class="ico"><use href="#i-help"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ===================== TOOLBAR ===================== -->
+  <nav class="toolbar" aria-label="Barra strumenti">
+    <div class="tool-group">
+      <span class="group-label">Vista</span>
+      <div class="seg-buttons" role="group" aria-label="Viste ortogonali 2D">
+        <button type="button" class="tbtn view-btn active" data-view="xy" aria-pressed="true" title="Vista X-Y (pianta) - tasto 1">X-Y</button>
+        <button type="button" class="tbtn view-btn" data-view="xz" aria-pressed="false" title="Vista X-Z (frontale) - tasto 2">X-Z</button>
+        <button type="button" class="tbtn view-btn" data-view="yz" aria-pressed="false" title="Vista Y-Z (laterale) - tasto 3">Y-Z</button>
+      </div>
+    </div>
+
+    <div class="tool-sep" aria-hidden="true"></div>
+
+    <div class="tool-group">
+      <span class="group-label">Zoom</span>
+      <button type="button" id="btnZoomIn" class="tbtn" title="Zoom avanti (+)" aria-label="Zoom avanti">
+        <svg class="ico"><use href="#i-zoom-in"/></svg><span class="btn-label">+</span>
+      </button>
+      <button type="button" id="btnZoomOut" class="tbtn" title="Zoom indietro (-)" aria-label="Zoom indietro">
+        <svg class="ico"><use href="#i-zoom-out"/></svg><span class="btn-label">-</span>
+      </button>
+      <button type="button" id="btnZoomWin" class="tbtn" title="Zoom finestra: traccia un rettangolo (Z)" aria-pressed="false">
+        <svg class="ico"><use href="#i-window"/></svg><span class="btn-label">Finestra</span>
+      </button>
+      <button type="button" id="btnFit" class="tbtn" title="Adatta tutto il percorso alla vista (F)" aria-label="Adatta alla vista">
+        <svg class="ico"><use href="#i-fit"/></svg><span class="btn-label">Fit</span>
+      </button>
+    </div>
+
+    <div class="tool-sep" aria-hidden="true"></div>
+
+    <div class="tool-group">
+      <span class="group-label">Modalità</span>
+      <button type="button" id="btnPan" class="tbtn active" title="Pan: trascina per spostare (P)" aria-pressed="true">
+        <svg class="ico"><use href="#i-pan"/></svg><span class="btn-label">Pan</span>
+      </button>
+      <button type="button" id="btnInspect" class="tbtn" title="Interroga punti con snap magnetico (I)" aria-pressed="false">
+        <svg class="ico"><use href="#i-inspect"/></svg><span class="btn-label">Interroga</span>
+      </button>
+      <button type="button" id="btnOrigin" class="tbtn" title="Imposta origine (O)" aria-pressed="false">
+        <svg class="ico"><use href="#i-origin"/></svg><span class="btn-label">Origine</span>
+      </button>
+    </div>
+
+    <div class="toolbar-spacer"></div>
+
+    <button type="button" id="btnPanel" class="tbtn" title="Mostra/nascondi pannello">
+      <svg class="ico"><use href="#i-panel"/></svg><span class="btn-label">Pannello</span>
+    </button>
+  </nav>
+
+  <!-- ===================== STAGE ===================== -->
+  <main class="stage" id="stage">
+    <div class="canvas-wrap" id="canvasWrap">
+      <canvas id="canvas" aria-label="Area grafica del percorso utensile"></canvas>
+
+      <!-- DRO -->
+      <div class="hud hud-dro" id="droCard">
+        <div class="dro-head"><span>DRO</span><span id="droUnit">mm</span></div>
+        <div class="dro-grid">
+          <div class="dro-cell"><label id="droLabel1">X</label><output id="droVal1">0.000</output></div>
+          <div class="dro-cell"><label id="droLabel2">Y</label><output id="droVal2">0.000</output></div>
+          <div class="dro-cell"><label id="droLabel3">Z</label><output id="droVal3" class="dim">--</output></div>
+        </div>
+        <div class="dro-foot" id="droFoot">Vista X-Y &middot; origine 0,0,0</div>
+      </div>
+
+      <!-- Badge vista / modo -->
+      <div class="hud hud-badges" id="viewBadge">
+        <span class="badge" id="badgeView">X-Y</span>
+        <span class="badge badge-mode" id="badgeMode">PAN</span>
+      </div>
+
+      <!-- Legenda -->
+      <div class="legend" id="legend" aria-label="Legenda colori">
+        <span class="legend-item"><i class="ln g0"></i>G00</span>
+        <span class="legend-item"><i class="ln g1"></i>G01</span>
+        <span class="legend-item"><i class="ln g2"></i>G02</span>
+        <span class="legend-item"><i class="ln g3"></i>G03</span>
+        <span class="legend-mode" id="legendMode">TIPO</span>
+      </div>
+
+      <!-- Chip selezione (mobile) -->
+      <button type="button" id="selChip" class="sel-chip hidden" aria-label="Apri dettagli punto selezionato">
+        <span class="sel-chip-top"><b id="chipType">G01</b><span id="chipCoords">X 0.000 &middot; Y 0.000</span></span>
+        <span class="sel-chip-block" id="chipBlock">N10 G01 X0 Y0</span>
+      </button>
+
+      <!-- Empty state -->
+      <div class="empty" id="emptyState">
+        <div class="empty-card">
+          <div class="empty-icon" aria-hidden="true">
+            <svg viewBox="0 0 64 64" width="56" height="56">
+              <rect x="4" y="4" width="56" height="56" rx="10" fill="none" stroke="#243244"/>
+              <path d="M14 46V22h20v12h16v12" fill="none" stroke="#22d3ee" stroke-width="2"/>
+              <path d="M14 22h12" stroke="#ff6b4a" stroke-width="2" stroke-dasharray="4 3"/>
+              <circle cx="34" cy="34" r="3" fill="#fbbf24"/>
+            </svg>
+          </div>
+          <h2>Nessun programma caricato</h2>
+          <p>Apri un file <b>.nc</b>, <b>.txt</b>, <b>.tap</b>, <b>.iso</b> o senza estensione (es. <code>SG1-1</code>). Su iPhone usa l'app <b>File</b>.</p>
+          <div class="empty-actions">
+            <button type="button" id="btnEmptyOpen" class="btn btn-primary">Apri file</button>
+            <button type="button" id="btnEmptyDemo" class="btn">Carica Demo</button>
+          </div>
+          <p class="hint">Desktop: trascina un file direttamente qui</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== PANNELLO ===================== -->
+    <aside class="side-panel" id="sidePanel" aria-label="Pannello dati">
+      <div class="panel-head">
+        <div class="tabs" role="tablist" aria-label="Sezioni pannello">
+          <button type="button" class="tab active" data-tab="files" role="tab" aria-selected="true">File</button>
+          <button type="button" class="tab" data-tab="inspect" role="tab" aria-selected="false">Info</button>
+          <button type="button" class="tab" data-tab="origin" role="tab" aria-selected="false">Origine</button>
+          <button type="button" class="tab" data-tab="help" role="tab" aria-selected="false">Aiuto</button>
+        </div>
+        <button type="button" id="btnPanelClose" class="icon-btn panel-close" aria-label="Chiudi pannello">
+          <svg class="ico"><use href="#i-close"/></svg>
+        </button>
+      </div>
+
+      <div class="panel-body">
+
+        <!-- FILE -->
+        <section class="panel-page active" id="page-files" role="tabpanel" aria-label="File caricati">
+          <div class="summary">
+            <div class="summary-cell"><b id="sumFiles">0</b><span>file</span></div>
+            <div class="summary-cell"><b id="sumSegs">0</b><span>segmenti</span></div>
+            <div class="summary-cell"><b id="sumLen">0</b><span>percorso</span></div>
+          </div>
+
+          <div class="row-between">
+            <span class="section-title">Programmi</span>
+            <div class="segmented" id="colorMode" role="group" aria-label="Modo colore">
+              <button type="button" data-mode="type" class="active" title="Colore per tipo di movimento">Tipo</button>
+              <button type="button" data-mode="file" title="Colore dedicato per file">File</button>
+            </div>
+          </div>
+
+          <label class="check" title="Se attivo, un valore senza punto decimale viene letto come micron Fanuc (X45250 = 45.250 mm)">
+            <input type="checkbox" id="optMicron">
+            <span>Valori senza punto = micron Fanuc</span>
+          </label>
+
+          <div id="fileList" class="file-list"></div>
+
+          <div class="panel-actions">
+            <button type="button" id="btnAddFile" class="btn btn-primary btn-block">
+              <svg class="ico"><use href="#i-open"/></svg>Apri / Importa file
+            </button>
+            <button type="button" id="btnDemo" class="btn btn-block">
+              <svg class="ico"><use href="#i-demo"/></svg>Carica programma demo
+            </button>
+          </div>
+          <p class="fine">Il colore identifica il tipo di movimento. In modalità <b>File</b> ogni programma usa il proprio colore per il confronto sgrossatura/finitura.</p>
+        </section>
+
+        <!-- INFO -->
+        <section class="panel-page" id="page-inspect" role="tabpanel" aria-label="Dettagli punto">
+          <div id="inspectBody" class="inspect-body">
+            <div class="inspect-empty">
+              <svg class="ico big"><use href="#i-inspect"/></svg>
+              <h3>Interroga punti</h3>
+              <p>Attiva <b>Interroga</b> e passa il mouse o tocca un vertice del percorso. Lo snap magnetico aggancia vertici e centri arco.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- ORIGINE -->
+        <section class="panel-page" id="page-origin" role="tabpanel" aria-label="Imposta origine">
+          <div class="origin-current">
+            <span class="section-title">Origine attiva (WCS)</span>
+            <div class="origin-readout">
+              <div><label>X</label><output id="orgX">0.000</output></div>
+              <div><label>Y</label><output id="orgY">0.000</output></div>
+              <div><label>Z</label><output id="orgZ">0.000</output></div>
+            </div>
+          </div>
+
+          <span class="section-title">Inserimento manuale quote</span>
+          <div class="origin-grid">
+            <label>X<span class="input-sign"><input id="orgInputX" type="number" step="0.001" inputmode="decimal" value="0"><button type="button" class="sign-btn" data-target="orgInputX" aria-label="Inverti segno X" title="Inverti segno">±</button></span></label>
+            <label>Y<span class="input-sign"><input id="orgInputY" type="number" step="0.001" inputmode="decimal" value="0"><button type="button" class="sign-btn" data-target="orgInputY" aria-label="Inverti segno Y" title="Inverti segno">±</button></span></label>
+            <label>Z<span class="input-sign"><input id="orgInputZ" type="number" step="0.001" inputmode="decimal" value="0"><button type="button" class="sign-btn" data-target="orgInputZ" aria-label="Inverti segno Z" title="Inverti segno">±</button></span></label>
+          </div>
+          <button type="button" id="btnApplyOrigin" class="btn btn-primary btn-block">Applica origine</button>
+
+          <div class="divider"></div>
+
+          <button type="button" id="btnPickOrigin" class="btn btn-block">
+            <svg class="ico"><use href="#i-origin"/></svg>Imposta da punto grafico
+          </button>
+          <button type="button" id="btnResetOrigin" class="btn btn-block">
+            <svg class="ico"><use href="#i-reset"/></svg>Ripristina origine originale
+          </button>
+
+          <p class="fine">La nuova origine <b>(0,0,0)</b> coincide con le quote inserite (shift G54 locale). Griglia, DRO e interrogazione si ricalcolano istantaneamente. Il comando <b>da punto grafico</b> usa lo snap su vertici e centri arco.</p>
+        </section>
+
+        <!-- AIUTO -->
+        <section class="panel-page" id="page-help" role="tabpanel" aria-label="Aiuto">
+          <span class="section-title">Caricare i file</span>
+          <p class="help-p">Il selettore non applica filtri: puoi aprire <code>.nc</code>, <code>.txt</code>, <code>.tap</code>, <code>.iso</code> e file <b>senza estensione</b> come <code>SG1-1</code>, <code>FT1-2</code>, <code>O0001</code>.</p>
+          <p class="help-p">Su iPhone: <b>File</b> &rarr; <b>Apri</b> &rarr; seleziona il programma (anche da iCloud). Il drag &amp; drop funziona su desktop.</p>
+
+          <span class="section-title">Scorciatoie desktop</span>
+          <div class="keys">
+            <div><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><span>Viste X-Y / X-Z / Y-Z</span></div>
+            <div><kbd>F</kbd><span>Fit to screen</span></div>
+            <div><kbd>+</kbd><kbd>-</kbd><span>Zoom avanti / indietro</span></div>
+            <div><kbd>P</kbd><span>Pan</span></div>
+            <div><kbd>I</kbd><span>Interroga punti</span></div>
+            <div><kbd>Z</kbd><span>Zoom finestra</span></div>
+            <div><kbd>O</kbd><span>Pannello origine</span></div>
+            <div><kbd>Esc</kbd><span>Annulla modalità / chiudi pannello</span></div>
+            <div><kbd>&larr;</kbd><kbd>&rarr;</kbd><kbd>&uarr;</kbd><kbd>&darr;</kbd><span>Pan da tastiera</span></div>
+          </div>
+
+          <span class="section-title">Note tecniche</span>
+          <ul class="help-list">
+            <li>Proiezioni ortogonali pure: nessuna vista 3D, nessun WebGL.</li>
+            <li>Archi G02/G03 con I/J/K o R, piani G17/G18/G19, eliche con variazione Z.</li>
+            <li>Convenzione Fanuc del verso di rotazione rispetto all'asse di vista: in X-Z e Y-Z un G02 può apparire antiorario.</li>
+            <li>Programmi in pollici (G20) convertiti in mm; opzione valori senza punto decimale = micron Fanuc.</li>
+            <li>Cicli fissi (G81-G89) e G28/G30/G53 non vengono tracciati: vengono segnalati negli avvisi del file.</li>
+            <li>La stima tempo usa il feed programmato e 20 m/min per i rapidi.</li>
+          </ul>
+
+          <span class="section-title">Installazione PWA</span>
+          <p class="help-p"><b>iPhone / Safari:</b> tocca <b>Condividi</b> &rarr; <b>Aggiungi alla schermata Home</b>. L'app si apre a schermo intero, rispetta le safe-area e funziona anche offline dopo il primo caricamento.</p>
+          <p class="help-p"><b>Desktop:</b> icona di installazione nella barra degli indirizzi di Chrome/Edge.</p>
+
+          <p class="fine">GT-Graphic <span id="appVersion">v1.0.0</span> &middot; Canvas 2D &middot; ISO/Fanuc</p>
+        </section>
+      </div>
+    </aside>
+  </main>
+
+  <!-- ===================== STATUS BAR ===================== -->
+  <footer class="statusbar">
+    <div class="status-left">
+      <span id="stFiles">0 file</span>
+      <span id="stSegs">0 segmenti</span>
+    </div>
+    <div class="status-center" id="stCursor">X -- &middot; Y --</div>
+    <div class="status-right">
+      <span id="stScale">2.00 px/mm</span>
+      <span id="stMode">PAN</span>
+    </div>
+  </footer>
+</div>
+
+<!-- Input file: NESSUN attributo accept, per non nascondere i file senza estensione su iOS -->
+<input type="file" id="fileInput" multiple class="hidden-input" tabindex="-1" aria-hidden="true">
+
+<!-- Overlay caricamento -->
+<div id="loading" class="loading hidden" role="status" aria-live="polite">
+  <div class="spinner" aria-hidden="true"></div>
+  <span>Analisi G-Code&hellip;</span>
+</div>
+
+<!-- Schermata di uscita -->
+<div id="exitScreen" class="exit-screen hidden" role="dialog" aria-modal="true" aria-labelledby="exitTitle">
+  <div class="exit-card">
+    <div class="exit-logo" aria-hidden="true">GT</div>
+    <h2 id="exitTitle">Sessione chiusa</h2>
+    <p>Programmi, origine, viste e pannelli sono stati azzerati.</p>
+    <button type="button" id="btnRestart" class="btn btn-primary btn-lg">Riavvia GT-Graphic</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script src="assets/js/parser.js"></script>
+<script src="assets/js/viewer.js"></script>
+<script src="assets/js/demo.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>
