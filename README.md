@@ -6,7 +6,7 @@
 
 - **Demo online:** <https://lucata76-beep.github.io/GT-Graphic/>
 - **Repository:** <https://github.com/lucata76-beep/GT-Graphic>
-- **Versione:** 1.2.0
+- **Versione:** 1.2.1
 
 ![Vista X-Y su desktop](docs/desktop-xy.png)
 
@@ -27,7 +27,7 @@
 
 ### Interfaccia
 
-Palette industriale ad alto contrasto: sfondo `#0d1117`, griglia a basso affaticamento, **G00** tratteggiato ambra/rosso, **G01** ciano continuo, **G02/G03** giallo e magenta. Pannelli flottanti semitrasparenti con `backdrop-filter: blur(8px)`, toolbar compatta a due righe su iPhone, legenda colori sempre leggibile.
+Palette industriale ad alto contrasto: sfondo `#0d1117`, griglia a basso affaticamento, **G00** tratteggiato ambra/rosso, **G01** ciano continuo, **G02/G03** giallo e magenta. Pannelli flottanti semitrasparenti con `backdrop-filter: blur(8px)`, toolbar compatta a due righe su iPhone, legenda colori sempre leggibile. La versione dell'app è indicata accanto al logo nell'appbar e nel pannello Aiuto.
 
 | Desktop, vista X-Z | iPhone, pannello a scomparsa |
 |---|---|
@@ -226,7 +226,7 @@ Il workflow `.github/workflows/deploy.yml` è incluso e pubblica la radice del r
 
 ```bash
 git add -A
-git commit -m "GT-Graphic 1.2.0"
+git commit -m "GT-Graphic 1.2.1"
 git push origin main
 ```
 

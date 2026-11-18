@@ -981,7 +981,12 @@
     updateDroThird(null);
     updateColorModeUI();
 
-    $('appVersion').textContent = 'v1.2.0';
+    var appVersion = 'v1.2.1';
+    var versionNodes = document.querySelectorAll('.js-version');
+    for (var vi = 0; vi < versionNodes.length; vi++) {
+      versionNodes[vi].textContent = appVersion;
+    }
+    if ($('appVersion')) $('appVersion').textContent = appVersion;
     registerSW();
   }
 

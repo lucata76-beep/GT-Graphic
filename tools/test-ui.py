@@ -55,6 +55,9 @@ def desktop(p):
         "() => { const i = document.querySelector('.brand-mark img'); return !!i && i.complete && i.naturalWidth > 0; }"
     )
     check(logo_ok, "Logo appbar caricato")
+    ver_txt = page.locator(".brand-ver").first.inner_text()
+    check(page.locator(".brand-ver").count() == 1 and page.locator(".brand-ver").first.is_visible(),
+          "Versione accanto al logo", ver_txt)
     check("apple-touch-icon.png" in (page.locator('link[rel="apple-touch-icon"]').get_attribute("href") or ""),
           "Apple touch icon configurata")
     check(page.locator("#emptyState").is_visible(), "Empty state visibile all'avvio")
